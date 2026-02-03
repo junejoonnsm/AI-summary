@@ -1,633 +1,617 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="th">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2575.7">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Assistant (Pro Version)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Libraries for Export -->
+    <!-- HTML-DOCX สำหรับ Word (.docx) -->
+    <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'Inter', 'sans-serif'],
+                        display: ['Inter', 'Sarabun', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background-color: #f8fafc; 
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .glass-sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        .drop-zone { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            border-style: dashed; 
+            border-width: 2px;
+        }
+        .drop-zone:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            background-color: #f8fafc;
+        }
+        .drop-zone.active { 
+            border-color: #2563eb; 
+            background-color: #eff6ff; 
+            transform: scale(0.98);
+        }
+        
+        /* A4 Paper Style */
+        .a4-paper {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 25mm 20mm;
+            margin: 0 auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            color: #334155;
+            font-size: 11pt; /* Standard doc font size */
+            line-height: 1.6;
+            position: relative;
+            outline: none; /* Remove default focus outline */
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        .a4-paper:focus {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* MOM Specific Styles (Will be injected into Word) */
+        .mom-title { color: #1e293b; font-weight: 700; font-size: 24px; margin-bottom: 8px; font-family: 'Sarabun', sans-serif; }
+        .mom-date { color: #64748b; font-weight: 500; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; font-size: 14px; }
+        .mom-section-title { 
+            color: #0f172a;
+            font-weight: 700; 
+            font-size: 16px; 
+            margin-top: 24px; 
+            margin-bottom: 12px;
+        }
+        .mom-list { list-style-type: disc; padding-left: 20px; }
+        .mom-list li { margin-bottom: 6px; }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @media (max-width: 768px) {
+            .a4-paper { width: 100%; padding: 15px; min-height: auto; }
+        }
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        #toast.error { background-color: #ef4444; }
+        #toast.success { background-color: #10b981; }
+        #toast.warning { background-color: #f59e0b; }
+
+        .hidden-step { display: none; }
+    </style>
 </head>
-<body>
-<p class="p1">&lt;!DOCTYPE html&gt;</p>
-<p class="p1">&lt;html lang="th"&gt;</p>
-<p class="p1">&lt;head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;AI Meeting Assistant (Pro Version)&lt;/title&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Font Awesome --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Fonts --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Sarabun:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"&gt;</p>
-<p class="p2"><span class="Apple-converted-space">    </span></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Libraries for Export --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- HTML-DOCX สำหรับ Word (.docx) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://unpkg.com/html-docx-js/dist/html-docx.js"&gt;&lt;/script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"&gt;&lt;/script&gt;</p>
-<p class="p2"><span class="Apple-converted-space">    </span></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>tailwind.config = {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>theme: {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>extend: {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>fontFamily: {</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>sans: ['Sarabun', 'Inter', 'sans-serif'],</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>display: ['Inter', 'Sarabun', 'sans-serif'],</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>},</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>colors: {</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>brand: {</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>50: '#eff6ff',</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>100: '#dbeafe',</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>500: '#3b82f6',</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>600: '#2563eb',</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>700: '#1d4ed8',</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>900: '#1e3a8a',</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>body {<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-color: #f8fafc;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-image: radial-gradient(#e2e8f0 1px, transparent 1px);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-size: 20px 20px;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>.glass-sidebar {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>.drop-zone {<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>border-style: dashed;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>border-width: 2px;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.drop-zone:hover {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>transform: translateY(-2px);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>border-color: #3b82f6;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-color: #f8fafc;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.drop-zone.active {<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>border-color: #2563eb;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-color: #eff6ff;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>transform: scale(0.98);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>/* A4 Paper Style */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.a4-paper {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>background: white;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>width: 210mm;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>min-height: 297mm;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>padding: 25mm 20mm;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>margin: 0 auto;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>color: #334155;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>font-size: 11pt; /* Standard doc font size */</p>
-<p class="p1"><span class="Apple-converted-space">            </span>line-height: 1.6;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>position: relative;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>outline: none; /* Remove default focus outline */</p>
-<p class="p1"><span class="Apple-converted-space">            </span>font-family: 'Sarabun', sans-serif;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>.a4-paper:focus {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 20px 25px -5px rgba(0, 0, 0, 0.1);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>/* MOM Specific Styles (Will be injected into Word) */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.mom-title { color: #1e293b; font-weight: 700; font-size: 24px; margin-bottom: 8px; font-family: 'Sarabun', sans-serif; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.mom-date { color: #64748b; font-weight: 500; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; font-size: 14px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.mom-section-title {<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>color: #0f172a;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 700;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>font-size: 16px;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>margin-top: 24px;<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 12px;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.mom-list { list-style-type: disc; padding-left: 20px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.mom-list li { margin-bottom: 6px; }</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>/* Custom Scrollbar */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.custom-scrollbar::-webkit-scrollbar { width: 6px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>@media (max-width: 768px) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>.a4-paper { width: 100%; padding: 15px; min-height: auto; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>/* Toast Notification */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>#toast {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>visibility: hidden;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>min-width: 250px;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>background-color: #333;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>color: #fff;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>text-align: center;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 8px;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>padding: 16px;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>position: fixed;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>z-index: 100;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>left: 50%;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>bottom: 30px;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>transform: translateX(-50%);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>font-size: 14px;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>opacity: 0;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>transition: opacity 0.5s, bottom 0.5s;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>#toast.show { visibility: visible; opacity: 1; bottom: 50px; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>#toast.error { background-color: #ef4444; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>#toast.success { background-color: #10b981; }</p>
-<p class="p1"><span class="Apple-converted-space">        </span>#toast.warning { background-color: #f59e0b; }</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>.hidden-step { display: none; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
-<p class="p1">&lt;/head&gt;</p>
-<p class="p1">&lt;body class="min-h-screen flex items-center justify-center p-4 md:p-8"&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="max-w-[1400px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-12 min-h-[800px] border border-slate-100"&gt;</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Sidebar (Left) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="md:col-span-3 glass-sidebar text-white p-8 flex flex-col justify-between relative overflow-hidden"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;!-- Decorative Blobs --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500 rounded-full opacity-20 blur-3xl"&gt;&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-indigo-500 rounded-full opacity-20 blur-3xl"&gt;&lt;/div&gt;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="relative z-10"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="flex items-center space-x-4 mb-10"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner border border-white/20"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;i class="fa-solid fa-wand-magic-sparkles text-2xl text-blue-300"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;h1 class="text-xl font-bold font-display tracking-tight"&gt;AI Report&lt;/h1&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;p class="text-xs text-slate-400"&gt;Automated Assistant&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;nav class="space-y-6"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="group flex items-start space-x-4 cursor-pointer" id="nav-step-1" onclick="if(!this.classList.contains('opacity-50')) showStep(1)"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div id="badge-step-1" class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-blue-400 bg-blue-500 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all"&gt;1&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="pt-1"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span class="block font-semibold text-sm text-white group-hover:text-blue-200 transition-colors"&gt;Input Data&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span class="block text-xs text-slate-400 mt-1"&gt;อัปโหลดข้อมูลดิบ&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p2"><span class="Apple-converted-space">                    </span></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="h-8 border-l-2 border-white/10 ml-4"&gt;&lt;/div&gt;</p>
-<p class="p2"><span class="Apple-converted-space">                    </span></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="group flex items-start space-x-4 opacity-50 transition-opacity duration-300" id="nav-step-2"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div id="badge-step-2" class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-600 bg-transparent text-slate-400 flex items-center justify-center font-bold text-sm"&gt;2&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="pt-1"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span class="block font-semibold text-sm text-slate-300"&gt;Preview &amp; Export&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span class="block text-xs text-slate-500 mt-1"&gt;ตรวจสอบและส่งออก&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/nav&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="relative z-10"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;p class="text-[10px] text-slate-500 text-center tracking-widest uppercase"&gt;Powered by Junejoonnsm&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Main Content (Right) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="md:col-span-9 bg-slate-50/50 relative overflow-hidden flex flex-col h-full"&gt;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;!-- Header --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center shadow-sm z-20"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;h2 class="text-xl font-bold text-slate-800 font-display flex items-center gap-2"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;span id="page-title"&gt;Create New Report&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/h2&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="flex items-center gap-3"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"&gt;&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;span class="text-xs font-medium text-slate-500"&gt;System Ready&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex-1 overflow-y-auto custom-scrollbar relative p-8"&gt;</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;!-- STEP 1: INPUT --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;div id="step-1-content" class="max-w-4xl mx-auto step-content transition-all duration-500 ease-out"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="text-center mb-10"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;h3 class="text-2xl font-bold text-slate-800 mb-3 font-display"&gt;เตรียมข้อมูลการประชุม&lt;/h3&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;p class="text-slate-500 text-sm max-w-lg mx-auto"&gt;ระบบ AI จะช่วยวิเคราะห์เสียงและรูปภาพ เพื่อสร้างรายงานการประชุมที่สมบูรณ์แบบในไม่กี่นาที&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="grid lg:grid-cols-2 gap-8"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;!-- Notes Section --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="space-y-4"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="flex items-center justify-between"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="text-sm font-semibold text-slate-700"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;i class="fa-regular fa-note-sticky mr-1 text-blue-500"&gt;&lt;/i&gt; บันทึกย่อ (Notes)</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span class="text-xs text-slate-400"&gt;Optional&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="relative group h-full"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;textarea id="input-notes" class="w-full h-full min-h-[300px] p-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none resize-none transition-all text-sm text-slate-600 leading-relaxed shadow-sm group-hover:shadow-md placeholder:text-slate-300" placeholder="พิมพ์หัวข้อสำคัญ หรือวางบันทึกย่อๆ ที่นี่..."&gt;&lt;/textarea&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;div class="absolute bottom-4 right-4 text-slate-300"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;i class="fa-solid fa-pen-nib"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;!-- Upload Section --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="space-y-6"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;!-- Audio Upload --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="space-y-2"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="text-sm font-semibold text-slate-700"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;i class="fa-solid fa-microphone-lines mr-1 text-orange-500"&gt;&lt;/i&gt; ไฟล์เสียง (Audio)</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;div class="relative"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;input type="file" id="input-audio" accept="audio/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'preview-audio-name', 'icon-audio')"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;div class="drop-zone border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-white group hover:border-orange-400 transition-colors"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;div id="icon-audio" class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                            </span>&lt;i class="fa-solid fa-cloud-arrow-up text-xl"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;p id="preview-audio-name" class="text-sm font-medium text-slate-600 group-hover:text-orange-600 transition-colors"&gt;คลิกเพื่ออัปโหลดไฟล์เสียง&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;p class="text-xs text-slate-400 mt-1"&gt;MP3, WAV (Max 25MB)&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;!-- Image Upload --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="space-y-2"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="text-sm font-semibold text-slate-700"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;i class="fa-regular fa-image mr-1 text-indigo-500"&gt;&lt;/i&gt; รูปภาพ (Image)</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/label&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;div class="relative"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;input type="file" id="input-image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'preview-image-name', 'icon-image')"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;div class="drop-zone border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-white group hover:border-indigo-400 transition-colors"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;div id="icon-image" class="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                            </span>&lt;i class="fa-regular fa-images text-xl"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;p id="preview-image-name" class="text-sm font-medium text-slate-600 group-hover:text-indigo-600 transition-colors"&gt;อัปโหลดรูปภาพกระดาน/สไลด์&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                        </span>&lt;p class="text-xs text-slate-400 mt-1"&gt;JPG, PNG&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;!-- Generate Button --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="mt-10"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;button onclick="generateSummary()" id="generateBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-5 rounded-2xl shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span id="btnText"&gt;Generate Report&lt;/span&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;i id="btnIcon" class="fa-solid fa-wand-magic-sparkles"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div id="loader" class="hidden"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;i class="fa-solid fa-circle-notch fa-spin"&gt;&lt;/i&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;p class="text-center text-xs text-slate-400 mt-4"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;i class="fa-solid fa-shield-halved mr-1"&gt;&lt;/i&gt; Your data is processed securely via n8n webhook</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/p&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;!-- STEP 2: PREVIEW --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;div id="step-2-content" class="max-w-5xl mx-auto step-content hidden-step animate-fade-in-up"&gt;</p>
-<p class="p2"><span class="Apple-converted-space">                    </span></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;!-- Toolbar --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm pb-6 pt-2 flex justify-between items-center mb-4"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button onclick="switchDocType('summary')" id="tab-summary" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;i class="fa-solid fa-file-contract mr-2"&gt;&lt;/i&gt;Summary</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button onclick="switchDocType('email')" id="tab-email" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;i class="fa-regular fa-envelope mr-2"&gt;&lt;/i&gt;Email Draft</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="flex gap-3"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button onclick="showStep(1)" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition shadow-sm"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;i class="fa-solid fa-arrow-left mr-2"&gt;&lt;/i&gt;Back</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button onclick="exportDocx()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                                </span>&lt;i class="fa-solid fa-file-word mr-2"&gt;&lt;/i&gt;Export .docx</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;!-- Editor Area (A4 Paper) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="flex justify-center pb-20"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div id="paper-container" class="a4-paper content-editable focus:ring-4 ring-blue-500/10 transition-shadow" contenteditable="true"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                            </span>&lt;!-- Content will be injected here --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Toast Element --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="toast"&gt;Notification&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>// Constants</p>
-<p class="p1"><span class="Apple-converted-space">        </span>const WEBHOOK_URL = 'https://junensm.app.n8n.cloud/webhook/generate-summary';</p>
-<p class="p2"><span class="Apple-converted-space">        </span></p>
-<p class="p1"><span class="Apple-converted-space">        </span>// State</p>
-<p class="p1"><span class="Apple-converted-space">        </span>let currentDocType = 'summary'; // 'summary' or 'email'</p>
-<p class="p1"><span class="Apple-converted-space">        </span>let generatedData = { summary: '', email: '', subject: '' };</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>// --- UI Functions ---</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function handleFileSelect(input, labelId, iconId) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const label = document.getElementById(labelId);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const iconDiv = document.getElementById(iconId);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const parent = input.parentElement.querySelector('.drop-zone');</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (input.files &amp;&amp; input.files[0]) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>label.textContent = input.files[0].name;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>label.classList.add('text-blue-600');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>parent.classList.add('border-blue-500', 'bg-blue-50');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>iconDiv.className = "w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>iconDiv.innerHTML = '&lt;i class="fa-solid fa-check text-xl"&gt;&lt;/i&gt;';</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function showStep(step) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const step1 = document.getElementById('step-1-content');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const step2 = document.getElementById('step-2-content');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const navStep1 = document.getElementById('nav-step-1');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const navStep2 = document.getElementById('nav-step-2');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const badge1 = document.getElementById('badge-step-1');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const badge2 = document.getElementById('badge-step-2');</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (step === 1) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>step1.classList.remove('hidden-step');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>step2.classList.add('hidden-step');</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>navStep2.classList.add('opacity-50');</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Reset Badge 2 Style</p>
-<p class="p1"><span class="Apple-converted-space">                </span>badge2.className = "flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-600 bg-transparent text-slate-400 flex items-center justify-center font-bold text-sm";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>badge2.innerText = "2";</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>} else {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>step1.classList.add('hidden-step');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>step2.classList.remove('hidden-step');</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>navStep2.classList.remove('opacity-50');</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Active Badge 2 Style</p>
-<p class="p1"><span class="Apple-converted-space">                </span>badge2.className = "flex-shrink-0 w-8 h-8 rounded-full border-2 border-blue-400 bg-blue-500 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>badge2.innerText = "2";</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Done Badge 1 Style</p>
-<p class="p1"><span class="Apple-converted-space">                </span>badge1.innerHTML = '&lt;i class="fa-solid fa-check"&gt;&lt;/i&gt;';</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function switchDocType(type) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>currentDocType = type;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const btnSummary = document.getElementById('tab-summary');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const btnEmail = document.getElementById('tab-email');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const paper = document.getElementById('paper-container');</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (type === 'summary') {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnSummary.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnEmail.className = "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>paper.innerHTML = generatedData.summary;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>} else {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnEmail.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-indigo-50 text-indigo-600 shadow-sm";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnSummary.className = "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all";</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>let content = generatedData.email;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>if(generatedData.subject) {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>content = `&lt;p&gt;&lt;strong&gt;Subject:&lt;/strong&gt; ${generatedData.subject}&lt;/p&gt;&lt;hr class="my-4 border-slate-200"&gt;` + content;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}</p>
-<p class="p1"><span class="Apple-converted-space">                </span>paper.innerHTML = content;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function showToast(message, type = 'default') {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const toast = document.getElementById("toast");</p>
-<p class="p1"><span class="Apple-converted-space">            </span>toast.className = "show";</p>
-<p class="p1"><span class="Apple-converted-space">            </span>toast.innerText = message;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (type === 'error') toast.classList.add('error');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>else if (type === 'success') toast.classList.add('success');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>else if (type === 'warning') toast.classList.add('warning');</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>setTimeout(() =&gt; toast.className = toast.className.replace("show", ""), 3000);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>// --- Core Logic ---</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>async function generateSummary() {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const btn = document.getElementById('generateBtn');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const btnText = document.getElementById('btnText');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const btnIcon = document.getElementById('btnIcon');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const loader = document.getElementById('loader');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const isDemoMode = false; // Demo mode UI removed, forced to false</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>const notes = document.getElementById('input-notes').value;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const audioFile = document.getElementById('input-audio').files[0];</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const imageFile = document.getElementById('input-image').files[0];</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (!notes &amp;&amp; !audioFile &amp;&amp; !imageFile &amp;&amp; !isDemoMode) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>showToast('กรุณากรอกข้อมูลหรืออัปโหลดไฟล์', 'warning');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>return;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Loading UI</p>
-<p class="p1"><span class="Apple-converted-space">            </span>btn.disabled = true;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>btnText.innerText = "Processing AI Analysis...";</p>
-<p class="p1"><span class="Apple-converted-space">            </span>btnIcon.classList.add('hidden');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>loader.classList.remove('hidden');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>btn.classList.add('opacity-80', 'cursor-wait');</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>let data;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>if (isDemoMode) {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>// This block is now unreachable unless variable changed manually in code</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>await new Promise(r =&gt; setTimeout(r, 2000));</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>data = getMockData(notes || "การประชุมทดสอบ");</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>showToast('สร้างสรุปจำลองสำเร็จ (Test Mode)', 'success');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>const formData = new FormData();</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>formData.append('notes', notes);</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (audioFile) formData.append('audio', audioFile);</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (imageFile) formData.append('image', imageFile);</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>formData.append('timestamp', new Date().toISOString());</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>const response = await fetch(WEBHOOK_URL, {</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>method: 'POST',</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>body: formData</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (!response.ok) throw new Error("Webhook failed");</p>
-<p class="p2"><span class="Apple-converted-space">                    </span></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>const resJson = await response.json();</p>
-<p class="p2"><span class="Apple-converted-space">                    </span></p>
-<p class="p1"><span class="Apple-converted-space">                    </span>// Normalize Data</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>data = {</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>summary: resJson.summary || resJson.text || getMockData(notes).summary,</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>email: resJson.email || resJson.email_draft || getMockData(notes).email,</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>subject: resJson.subject || "สรุปการประชุม"</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>};</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>showToast('AI Analysis Complete!', 'success');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Format &amp; Store Data</p>
-<p class="p1"><span class="Apple-converted-space">                </span>generatedData.summary = formatToMOM(data.summary);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>generatedData.email = formatToHTML(data.email);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>generatedData.subject = data.subject;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Render Summary initially</p>
-<p class="p1"><span class="Apple-converted-space">                </span>switchDocType('summary');</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Transition</p>
-<p class="p1"><span class="Apple-converted-space">                </span>showStep(2);</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>} catch (error) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>console.warn("Fallback to offline mode", error);</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Demo logic fallback without UI toggle</p>
-<p class="p1"><span class="Apple-converted-space">                </span>const mock = getMockData(notes || "การประชุม (Offline Mode)");</p>
-<p class="p1"><span class="Apple-converted-space">                </span>generatedData.summary = formatToMOM(mock.summary);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>generatedData.email = formatToHTML(mock.email);</p>
-<p class="p2"><span class="Apple-converted-space">                </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>showToast('การเชื่อมต่อขัดข้อง - ใช้ข้อมูลจำลอง', 'warning');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>switchDocType('summary');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>showStep(2);</p>
-<p class="p1"><span class="Apple-converted-space">            </span>} finally {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btn.disabled = false;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnText.innerText = "Generate Report";</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btnIcon.classList.remove('hidden');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>loader.classList.add('hidden');</p>
-<p class="p1"><span class="Apple-converted-space">                </span>btn.classList.remove('opacity-80', 'cursor-wait');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>// --- Formatting &amp; Export ---</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function formatToMOM(text) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Convert plain text markdown to HTML with specific classes for Word</p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (!text) return '';</p>
-<p class="p1"><span class="Apple-converted-space">            </span>let html = `&lt;div class="mom-title"&gt;Minutes of Meeting&lt;/div&gt;`;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>html += `&lt;div class="mom-date"&gt;Date: ${new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}&lt;/div&gt;`;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Simple Markdown Parsing</p>
-<p class="p1"><span class="Apple-converted-space">            </span>let lines = text.split('\n');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>let inList = false;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>lines.forEach(line =&gt; {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>line = line.trim();</p>
-<p class="p1"><span class="Apple-converted-space">                </span>if (!line) return;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Bold</p>
-<p class="p1"><span class="Apple-converted-space">                </span>line = line.replace(/\*\*(.*?)\*\*/g, '&lt;strong&gt;$1&lt;/strong&gt;');</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Headers</p>
-<p class="p1"><span class="Apple-converted-space">                </span>if (line.startsWith('##') || line.startsWith('###')) {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (inList) { html += '&lt;/ul&gt;'; inList = false; }</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>html += `&lt;div class="mom-section-title"&gt;${line.replace(/#/g, '').trim()}&lt;/div&gt;`;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}<span class="Apple-converted-space"> </span></p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Lists</p>
-<p class="p1"><span class="Apple-converted-space">                </span>else if (line.startsWith('- ') || line.startsWith('* ')) {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (!inList) { html += '&lt;ul class="mom-list"&gt;'; inList = true; }</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>html += `&lt;li&gt;${line.substring(2)}&lt;/li&gt;`;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}</p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Normal Paragraph</p>
-<p class="p1"><span class="Apple-converted-space">                </span>else {</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>if (inList) { html += '&lt;/ul&gt;'; inList = false; }</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>html += `&lt;p style="margin-bottom:8px;"&gt;${line}&lt;/p&gt;`;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>}</p>
-<p class="p1"><span class="Apple-converted-space">            </span>});</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (inList) html += '&lt;/ul&gt;';</p>
-<p class="p1"><span class="Apple-converted-space">            </span>return html;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function formatToHTML(text) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>if (!text) return '';</p>
-<p class="p1"><span class="Apple-converted-space">            </span>return text.replace(/\n/g, '&lt;br&gt;').replace(/\*\*(.*?)\*\*/g, '&lt;strong&gt;$1&lt;/strong&gt;');</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>function exportDocx() {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const content = document.getElementById('paper-container').innerHTML;</p>
-<p class="p2"><span class="Apple-converted-space">            </span></p>
-<p class="p1"><span class="Apple-converted-space">            </span>// Construct a full HTML document for the converter</p>
-<p class="p1"><span class="Apple-converted-space">            </span>const htmlString = `</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;!DOCTYPE html&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;html&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;meta charset="UTF-8"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>body { font-family: 'Sarabun', sans-serif; font-size: 14px; line-height: 1.5; color: #333; }</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>.mom-title { font-size: 24px; font-weight: bold; color: #1e293b; margin-bottom: 10px; }</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>.mom-date { font-size: 14px; color: #64748b; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>.mom-section-title { font-size: 16px; font-weight: bold; color: #000; margin-top: 20px; margin-bottom: 10px; }</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>ul { padding-left: 20px; }</p>
-<p class="p1"><span class="Apple-converted-space">                        </span>li { margin-bottom: 5px; }</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;body&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                    </span>${content}</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/body&gt;</p>
-<p class="p1"><span class="Apple-converted-space">                </span>&lt;/html&gt;</p>
-<p class="p1"><span class="Apple-converted-space">            </span>`;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Use html-docx-js to generate blob</p>
-<p class="p1"><span class="Apple-converted-space">                </span>const converted = htmlDocx.asBlob(htmlString);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>// Use FileSaver to save</p>
-<p class="p1"><span class="Apple-converted-space">                </span>saveAs(converted, `Meeting_Report_${currentDocType}.docx`);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>showToast('ดาวน์โหลดไฟล์เรียบร้อย', 'success');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>} catch (e) {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>console.error(e);</p>
-<p class="p1"><span class="Apple-converted-space">                </span>showToast('เกิดข้อผิดพลาดในการ Export', 'error');</p>
-<p class="p1"><span class="Apple-converted-space">            </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>// --- Mock Data ---</p>
-<p class="p1"><span class="Apple-converted-space">        </span>function getMockData(topic) {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>return {</p>
-<p class="p1"><span class="Apple-converted-space">                </span>summary: `## สรุปประเด็นสำคัญ</p>
-<p class="p1">**หัวข้อการประชุม:** ${topic}</p>
-<p class="p2"><br></p>
-<p class="p1">### 1. ภาพรวมสถานการณ์ปัจจุบัน</p>
-<p class="p1">- ยอดขายในไตรมาสที่ผ่านมาเติบโตขึ้น 15% ตามเป้าหมายที่วางไว้</p>
-<p class="p1">- พบปัญหาเรื่องการส่งมอบสินค้าล่าช้าในบางพื้นที่ เนื่องจากระบบขนส่ง</p>
-<p class="p2"><br></p>
-<p class="p1">### 2. แผนการดำเนินงาน</p>
-<p class="p1">- **ฝ่ายการตลาด:** จะเริ่มแคมเปญใหม่บน Social Media ในสัปดาห์หน้า</p>
-<p class="p1">- **ฝ่าย IT:** เตรียมอัปเกรดระบบ Server เพื่อรองรับผู้ใช้งานที่เพิ่มขึ้น</p>
-<p class="p1">- **ฝ่ายบริหาร:** อนุมัติงบประมาณเพิ่มเติมสำหรับการจ้างพนักงานใหม่ 3 ตำแหน่ง</p>
-<p class="p2"><br></p>
-<p class="p1">### 3. มติที่ประชุม</p>
-<p class="p1">- เห็นชอบให้ดำเนินการตามแผนการตลาดที่เสนอมา</p>
-<p class="p1">- มอบหมายให้คุณสมชายติดตามเรื่องระบบขนส่งและรายงานผลในครั้งหน้า`,</p>
-<p class="p1"><span class="Apple-converted-space">                </span>email: `เรียน ทีมงานทุกท่าน,</p>
-<p class="p2"><br></p>
-<p class="p1">สรุปผลการประชุมเรื่อง **${topic}** ประจำวันที่ ${new Date().toLocaleDateString('th-TH')}</p>
-<p class="p2"><br></p>
-<p class="p1">**ประเด็นสำคัญ:**</p>
-<p class="p1">เราได้ข้อสรุปที่น่าพอใจในเรื่องยอดขาย แต่ต้องเร่งแก้ไขปัญหาการขนส่งด่วน</p>
-<p class="p2"><br></p>
-<p class="p1">**สิ่งที่ต้องดำเนินการต่อ (Action Items):**</p>
-<p class="p1">1. ทีมการตลาดเริ่มแคมเปญใหม่ทันที</p>
-<p class="p1">2. ทีม IT ดำเนินการอัปเกรด Server</p>
-<p class="p1">3. คุณสมชายรายงานความคืบหน้าขนส่งสัปดาห์หน้า</p>
-<p class="p2"><br></p>
-<p class="p1">หากมีข้อสงสัยสามารถสอบถามได้ครับ</p>
-<p class="p2"><br></p>
-<p class="p1">ขอแสดงความนับถือ,</p>
-<p class="p1">[ชื่อของคุณ]`</p>
-<p class="p1"><span class="Apple-converted-space">            </span>};</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
-<p class="p1">&lt;/body&gt;</p>
-<p class="p1">&lt;/html&gt;</p>
+<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
+
+    <div class="max-w-[1400px] w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-12 min-h-[800px] border border-slate-100">
+        
+        <!-- Sidebar (Left) -->
+        <div class="md:col-span-3 glass-sidebar text-white p-8 flex flex-col justify-between relative overflow-hidden">
+            <!-- Decorative Blobs -->
+            <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-indigo-500 rounded-full opacity-20 blur-3xl"></div>
+            
+            <div class="relative z-10">
+                <div class="flex items-center space-x-4 mb-10">
+                    <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner border border-white/20">
+                        <i class="fa-solid fa-wand-magic-sparkles text-2xl text-blue-300"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold font-display tracking-tight">AI Report</h1>
+                        <p class="text-xs text-slate-400">Automated Assistant</p>
+                    </div>
+                </div>
+                
+                <nav class="space-y-6">
+                    <div class="group flex items-start space-x-4 cursor-pointer" id="nav-step-1" onclick="if(!this.classList.contains('opacity-50')) showStep(1)">
+                        <div id="badge-step-1" class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-blue-400 bg-blue-500 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all">1</div>
+                        <div class="pt-1">
+                            <span class="block font-semibold text-sm text-white group-hover:text-blue-200 transition-colors">Input Data</span>
+                            <span class="block text-xs text-slate-400 mt-1">อัปโหลดข้อมูลดิบ</span>
+                        </div>
+                    </div>
+                    
+                    <div class="h-8 border-l-2 border-white/10 ml-4"></div>
+                    
+                    <div class="group flex items-start space-x-4 opacity-50 transition-opacity duration-300" id="nav-step-2">
+                        <div id="badge-step-2" class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-600 bg-transparent text-slate-400 flex items-center justify-center font-bold text-sm">2</div>
+                        <div class="pt-1">
+                            <span class="block font-semibold text-sm text-slate-300">Preview & Export</span>
+                            <span class="block text-xs text-slate-500 mt-1">ตรวจสอบและส่งออก</span>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+            
+            <div class="relative z-10">
+                <p class="text-[10px] text-slate-500 text-center tracking-widest uppercase">Powered by Junejoonnsm</p>
+            </div>
+        </div>
+
+        <!-- Main Content (Right) -->
+        <div class="md:col-span-9 bg-slate-50/50 relative overflow-hidden flex flex-col h-full">
+            
+            <!-- Header -->
+            <div class="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center shadow-sm z-20">
+                <h2 class="text-xl font-bold text-slate-800 font-display flex items-center gap-2">
+                    <span id="page-title">Create New Report</span>
+                </h2>
+                <div class="flex items-center gap-3">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="text-xs font-medium text-slate-500">System Ready</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar relative p-8">
+                
+                <!-- STEP 1: INPUT -->
+                <div id="step-1-content" class="max-w-4xl mx-auto step-content transition-all duration-500 ease-out">
+                    <div class="text-center mb-10">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-3 font-display">เตรียมข้อมูลการประชุม</h3>
+                        <p class="text-slate-500 text-sm max-w-lg mx-auto">ระบบ AI จะช่วยวิเคราะห์เสียงและรูปภาพ เพื่อสร้างรายงานการประชุมที่สมบูรณ์แบบในไม่กี่นาที</p>
+                    </div>
+
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <!-- Notes Section -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-semibold text-slate-700">
+                                    <i class="fa-regular fa-note-sticky mr-1 text-blue-500"></i> บันทึกย่อ (Notes)
+                                </label>
+                                <span class="text-xs text-slate-400">Optional</span>
+                            </div>
+                            <div class="relative group h-full">
+                                <textarea id="input-notes" class="w-full h-full min-h-[300px] p-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none resize-none transition-all text-sm text-slate-600 leading-relaxed shadow-sm group-hover:shadow-md placeholder:text-slate-300" placeholder="พิมพ์หัวข้อสำคัญ หรือวางบันทึกย่อๆ ที่นี่..."></textarea>
+                                <div class="absolute bottom-4 right-4 text-slate-300">
+                                    <i class="fa-solid fa-pen-nib"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upload Section -->
+                        <div class="space-y-6">
+                            <!-- Audio Upload -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold text-slate-700">
+                                    <i class="fa-solid fa-microphone-lines mr-1 text-orange-500"></i> ไฟล์เสียง (Audio)
+                                </label>
+                                <div class="relative">
+                                    <input type="file" id="input-audio" accept="audio/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'preview-audio-name', 'icon-audio')">
+                                    <div class="drop-zone border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-white group hover:border-orange-400 transition-colors">
+                                        <div id="icon-audio" class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                                        </div>
+                                        <p id="preview-audio-name" class="text-sm font-medium text-slate-600 group-hover:text-orange-600 transition-colors">คลิกเพื่ออัปโหลดไฟล์เสียง</p>
+                                        <p class="text-xs text-slate-400 mt-1">MP3, WAV (Max 25MB)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Image Upload -->
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold text-slate-700">
+                                    <i class="fa-regular fa-image mr-1 text-indigo-500"></i> รูปภาพ (Image)
+                                </label>
+                                <div class="relative">
+                                    <input type="file" id="input-image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'preview-image-name', 'icon-image')">
+                                    <div class="drop-zone border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-white group hover:border-indigo-400 transition-colors">
+                                        <div id="icon-image" class="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                            <i class="fa-regular fa-images text-xl"></i>
+                                        </div>
+                                        <p id="preview-image-name" class="text-sm font-medium text-slate-600 group-hover:text-indigo-600 transition-colors">อัปโหลดรูปภาพกระดาน/สไลด์</p>
+                                        <p class="text-xs text-slate-400 mt-1">JPG, PNG</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="mt-10">
+                        <button onclick="generateSummary()" id="generateBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-5 rounded-2xl shadow-lg hover:shadow-blue-500/30 transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg">
+                            <span id="btnText">Generate Report</span>
+                            <i id="btnIcon" class="fa-solid fa-wand-magic-sparkles"></i>
+                            <div id="loader" class="hidden">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            </div>
+                        </button>
+                        <p class="text-center text-xs text-slate-400 mt-4">
+                            <i class="fa-solid fa-shield-halved mr-1"></i> Your data is processed securely via n8n webhook
+                        </p>
+                    </div>
+                </div>
+
+                <!-- STEP 2: PREVIEW -->
+                <div id="step-2-content" class="max-w-5xl mx-auto step-content hidden-step animate-fade-in-up">
+                    
+                    <!-- Toolbar -->
+                    <div class="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm pb-6 pt-2 flex justify-between items-center mb-4">
+                        <div class="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                            <button onclick="switchDocType('summary')" id="tab-summary" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm">
+                                <i class="fa-solid fa-file-contract mr-2"></i>Summary
+                            </button>
+                            <button onclick="switchDocType('email')" id="tab-email" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all">
+                                <i class="fa-regular fa-envelope mr-2"></i>Email Draft
+                            </button>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button onclick="showStep(1)" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition shadow-sm">
+                                <i class="fa-solid fa-arrow-left mr-2"></i>Back
+                            </button>
+                            <button onclick="exportDocx()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center">
+                                <i class="fa-solid fa-file-word mr-2"></i>Export .docx
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Editor Area (A4 Paper) -->
+                    <div class="flex justify-center pb-20">
+                        <div id="paper-container" class="a4-paper content-editable focus:ring-4 ring-blue-500/10 transition-shadow" contenteditable="true">
+                            <!-- Content will be injected here -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Element -->
+    <div id="toast">Notification</div>
+
+    <script>
+        // Constants
+        const WEBHOOK_URL = 'https://junensm.app.n8n.cloud/webhook/generate-summary';
+        
+        // State
+        let currentDocType = 'summary'; // 'summary' or 'email'
+        let generatedData = { summary: '', email: '', subject: '' };
+
+        // --- UI Functions ---
+
+        function handleFileSelect(input, labelId, iconId) {
+            const label = document.getElementById(labelId);
+            const iconDiv = document.getElementById(iconId);
+            const parent = input.parentElement.querySelector('.drop-zone');
+            
+            if (input.files && input.files[0]) {
+                label.textContent = input.files[0].name;
+                label.classList.add('text-blue-600');
+                parent.classList.add('border-blue-500', 'bg-blue-50');
+                iconDiv.className = "w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3";
+                iconDiv.innerHTML = '<i class="fa-solid fa-check text-xl"></i>';
+            }
+        }
+
+        function showStep(step) {
+            const step1 = document.getElementById('step-1-content');
+            const step2 = document.getElementById('step-2-content');
+            const navStep1 = document.getElementById('nav-step-1');
+            const navStep2 = document.getElementById('nav-step-2');
+            const badge1 = document.getElementById('badge-step-1');
+            const badge2 = document.getElementById('badge-step-2');
+
+            if (step === 1) {
+                step1.classList.remove('hidden-step');
+                step2.classList.add('hidden-step');
+                
+                navStep2.classList.add('opacity-50');
+                
+                // Reset Badge 2 Style
+                badge2.className = "flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-600 bg-transparent text-slate-400 flex items-center justify-center font-bold text-sm";
+                badge2.innerText = "2";
+
+            } else {
+                step1.classList.add('hidden-step');
+                step2.classList.remove('hidden-step');
+                
+                navStep2.classList.remove('opacity-50');
+                
+                // Active Badge 2 Style
+                badge2.className = "flex-shrink-0 w-8 h-8 rounded-full border-2 border-blue-400 bg-blue-500 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all";
+                badge2.innerText = "2";
+                
+                // Done Badge 1 Style
+                badge1.innerHTML = '<i class="fa-solid fa-check"></i>';
+            }
+        }
+
+        function switchDocType(type) {
+            currentDocType = type;
+            const btnSummary = document.getElementById('tab-summary');
+            const btnEmail = document.getElementById('tab-email');
+            const paper = document.getElementById('paper-container');
+
+            if (type === 'summary') {
+                btnSummary.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-blue-50 text-blue-600 shadow-sm";
+                btnEmail.className = "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all";
+                paper.innerHTML = generatedData.summary;
+            } else {
+                btnEmail.className = "px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-indigo-50 text-indigo-600 shadow-sm";
+                btnSummary.className = "px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 transition-all";
+                
+                let content = generatedData.email;
+                if(generatedData.subject) {
+                    content = `<p><strong>Subject:</strong> ${generatedData.subject}</p><hr class="my-4 border-slate-200">` + content;
+                }
+                paper.innerHTML = content;
+            }
+        }
+
+        function showToast(message, type = 'default') {
+            const toast = document.getElementById("toast");
+            toast.className = "show";
+            toast.innerText = message;
+            
+            if (type === 'error') toast.classList.add('error');
+            else if (type === 'success') toast.classList.add('success');
+            else if (type === 'warning') toast.classList.add('warning');
+
+            setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
+        }
+
+        // --- Core Logic ---
+
+        async function generateSummary() {
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+            const loader = document.getElementById('loader');
+            const isDemoMode = false; // Demo mode UI removed, forced to false
+
+            const notes = document.getElementById('input-notes').value;
+            const audioFile = document.getElementById('input-audio').files[0];
+            const imageFile = document.getElementById('input-image').files[0];
+
+            if (!notes && !audioFile && !imageFile && !isDemoMode) {
+                showToast('กรุณากรอกข้อมูลหรืออัปโหลดไฟล์', 'warning');
+                return;
+            }
+
+            // Loading UI
+            btn.disabled = true;
+            btnText.innerText = "Processing AI Analysis...";
+            btnIcon.classList.add('hidden');
+            loader.classList.remove('hidden');
+            btn.classList.add('opacity-80', 'cursor-wait');
+
+            try {
+                let data;
+
+                if (isDemoMode) {
+                    // This block is now unreachable unless variable changed manually in code
+                    await new Promise(r => setTimeout(r, 2000));
+                    data = getMockData(notes || "การประชุมทดสอบ");
+                    showToast('สร้างสรุปจำลองสำเร็จ (Test Mode)', 'success');
+                } else {
+                    const formData = new FormData();
+                    formData.append('notes', notes);
+                    if (audioFile) formData.append('audio', audioFile);
+                    if (imageFile) formData.append('image', imageFile);
+                    formData.append('timestamp', new Date().toISOString());
+
+                    const response = await fetch(WEBHOOK_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error("Webhook failed");
+                    
+                    const resJson = await response.json();
+                    
+                    // Normalize Data
+                    data = {
+                        summary: resJson.summary || resJson.text || getMockData(notes).summary,
+                        email: resJson.email || resJson.email_draft || getMockData(notes).email,
+                        subject: resJson.subject || "สรุปการประชุม"
+                    };
+                    showToast('AI Analysis Complete!', 'success');
+                }
+
+                // Format & Store Data
+                generatedData.summary = formatToMOM(data.summary);
+                generatedData.email = formatToHTML(data.email);
+                generatedData.subject = data.subject;
+
+                // Render Summary initially
+                switchDocType('summary');
+                
+                // Transition
+                showStep(2);
+
+            } catch (error) {
+                console.warn("Fallback to offline mode", error);
+                
+                // Demo logic fallback without UI toggle
+                const mock = getMockData(notes || "การประชุม (Offline Mode)");
+                generatedData.summary = formatToMOM(mock.summary);
+                generatedData.email = formatToHTML(mock.email);
+                
+                showToast('การเชื่อมต่อขัดข้อง - ใช้ข้อมูลจำลอง', 'warning');
+                switchDocType('summary');
+                showStep(2);
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = "Generate Report";
+                btnIcon.classList.remove('hidden');
+                loader.classList.add('hidden');
+                btn.classList.remove('opacity-80', 'cursor-wait');
+            }
+        }
+
+        // --- Formatting & Export ---
+
+        function formatToMOM(text) {
+            // Convert plain text markdown to HTML with specific classes for Word
+            if (!text) return '';
+            let html = `<div class="mom-title">Minutes of Meeting</div>`;
+            html += `<div class="mom-date">Date: ${new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
+            
+            // Simple Markdown Parsing
+            let lines = text.split('\n');
+            let inList = false;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Bold
+                line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                // Headers
+                if (line.startsWith('##') || line.startsWith('###')) {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    html += `<div class="mom-section-title">${line.replace(/#/g, '').trim()}</div>`;
+                } 
+                // Lists
+                else if (line.startsWith('- ') || line.startsWith('* ')) {
+                    if (!inList) { html += '<ul class="mom-list">'; inList = true; }
+                    html += `<li>${line.substring(2)}</li>`;
+                }
+                // Normal Paragraph
+                else {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    html += `<p style="margin-bottom:8px;">${line}</p>`;
+                }
+            });
+
+            if (inList) html += '</ul>';
+            return html;
+        }
+
+        function formatToHTML(text) {
+            if (!text) return '';
+            return text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        }
+
+        function exportDocx() {
+            const content = document.getElementById('paper-container').innerHTML;
+            
+            // Construct a full HTML document for the converter
+            const htmlString = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: 'Sarabun', sans-serif; font-size: 14px; line-height: 1.5; color: #333; }
+                        .mom-title { font-size: 24px; font-weight: bold; color: #1e293b; margin-bottom: 10px; }
+                        .mom-date { font-size: 14px; color: #64748b; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+                        .mom-section-title { font-size: 16px; font-weight: bold; color: #000; margin-top: 20px; margin-bottom: 10px; }
+                        ul { padding-left: 20px; }
+                        li { margin-bottom: 5px; }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+                </html>
+            `;
+
+            try {
+                // Use html-docx-js to generate blob
+                const converted = htmlDocx.asBlob(htmlString);
+                // Use FileSaver to save
+                saveAs(converted, `Meeting_Report_${currentDocType}.docx`);
+                showToast('ดาวน์โหลดไฟล์เรียบร้อย', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('เกิดข้อผิดพลาดในการ Export', 'error');
+            }
+        }
+
+        // --- Mock Data ---
+        function getMockData(topic) {
+            return {
+                summary: `## สรุปประเด็นสำคัญ
+**หัวข้อการประชุม:** ${topic}
+
+### 1. ภาพรวมสถานการณ์ปัจจุบัน
+- ยอดขายในไตรมาสที่ผ่านมาเติบโตขึ้น 15% ตามเป้าหมายที่วางไว้
+- พบปัญหาเรื่องการส่งมอบสินค้าล่าช้าในบางพื้นที่ เนื่องจากระบบขนส่ง
+
+### 2. แผนการดำเนินงาน
+- **ฝ่ายการตลาด:** จะเริ่มแคมเปญใหม่บน Social Media ในสัปดาห์หน้า
+- **ฝ่าย IT:** เตรียมอัปเกรดระบบ Server เพื่อรองรับผู้ใช้งานที่เพิ่มขึ้น
+- **ฝ่ายบริหาร:** อนุมัติงบประมาณเพิ่มเติมสำหรับการจ้างพนักงานใหม่ 3 ตำแหน่ง
+
+### 3. มติที่ประชุม
+- เห็นชอบให้ดำเนินการตามแผนการตลาดที่เสนอมา
+- มอบหมายให้คุณสมชายติดตามเรื่องระบบขนส่งและรายงานผลในครั้งหน้า`,
+                email: `เรียน ทีมงานทุกท่าน,
+
+สรุปผลการประชุมเรื่อง **${topic}** ประจำวันที่ ${new Date().toLocaleDateString('th-TH')}
+
+**ประเด็นสำคัญ:**
+เราได้ข้อสรุปที่น่าพอใจในเรื่องยอดขาย แต่ต้องเร่งแก้ไขปัญหาการขนส่งด่วน
+
+**สิ่งที่ต้องดำเนินการต่อ (Action Items):**
+1. ทีมการตลาดเริ่มแคมเปญใหม่ทันที
+2. ทีม IT ดำเนินการอัปเกรด Server
+3. คุณสมชายรายงานความคืบหน้าขนส่งสัปดาห์หน้า
+
+หากมีข้อสงสัยสามารถสอบถามได้ครับ
+
+ขอแสดงความนับถือ,
+[ชื่อของคุณ]`
+            };
+        }
+    </script>
 </body>
 </html>
